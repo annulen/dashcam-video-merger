@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-use autodie qw(:all);
+use autodie;
 use strict;
 use warnings;
 
@@ -15,17 +15,28 @@ my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
 
 my $out_dir = 'Output';
-my $playlist_filename = "$out_dir/playlist.txt";
+my $playlist = "$out_dir/playlist.txt";
 
-sub make_ffmpeg_cmd {
+my $ffmpeg_join_cmd = "ffmpeg -f concat -safe 0 -i $playlist -c copy $out_dir/output.mp4";
+
+sub ffmpeg_pip_cmd {
     my ($i1, $i2, $o) = @_;
-    qq,ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_hd" $o,;
+    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_hd" $o};
+}
+
+sub run_command {
+    my $cmd = shift;
+    print "$cmd\n";
+    system($cmd) == 0 or die "Comand failed with code: $?";
 }
 
 sub overlay_back_on_front {
     my @front_chunk_files = @_;
 
-    `mkdir -p Output`;
+    unless (-d $out_dir) {
+        mkdir $out_dir or die "Failed to create $out_dir";
+    }
+
     my @out_chunks;
 
     for my $front (@front_chunk_files) {
@@ -38,14 +49,9 @@ sub overlay_back_on_front {
 
         -f $front or die "File '$front' is missing";
         -f $back or die "File '$back' is missing";
-        #-e $output and die "File '$output' already exists";
+        -e $output and die "File '$output' already exists";
 
-        print "==>> $output\n";
-
-        my $cmd = make_ffmpeg_cmd $front, $back, $output;
-        print "$cmd\n";
-        #`$cmd`;
-
+        run_command(ffmpeg_pip_cmd $front, $back, $output);
         push @out_chunks, "${base}.MP4";
     }
     return @out_chunks;
@@ -54,14 +60,12 @@ sub overlay_back_on_front {
 sub write_playlist {
     my @outs = @_;
 
-    open my $fh, '>', $playlist_filename;
+    open my $fh, '>', $playlist;
     print $fh join "\n", map { "file '$_'" } @outs;
 }
 
 my @outs = overlay_back_on_front(sort glob('Front/*.MP4'));
 write_playlist @outs;
 
-my $ffmpeg_join_cmd = "ffmpeg -f concat -safe 0 -i $playlist_filename -c copy $out_dir/output.mp4";
-print "$ffmpeg_join_cmd\n";
-`$ffmpeg_join_cmd`;
+run_command($ffmpeg_join_cmd);
 
