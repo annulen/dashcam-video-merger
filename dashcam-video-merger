@@ -1,0 +1,67 @@
+#!/usr/bin/env perl
+
+use autodie qw(:all);
+use strict;
+use warnings;
+
+my $ffmpeg_filter_hd =
+      '[0:v]scale=1280:1024[main];'
+    . '[1:v]crop=x=566:y=430:w=1132:h=650[pip];'
+    . '[pip]scale=w=iw/2.1:h=ih/2.1[pip];'
+    . '[pip]eq=brightness=0.15[pip];'
+    . '[main][pip]overlay=W-w:0';
+
+my $codec = '';
+my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
+
+my $out_dir = 'Output';
+my $playlist_filename = "$out_dir/playlist.txt";
+
+sub make_ffmpeg_cmd {
+    my ($i1, $i2, $o) = @_;
+    qq,ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_hd" $o,;
+}
+
+sub overlay_back_on_front {
+    my @front_chunk_files = @_;
+
+    `mkdir -p Output`;
+    my @out_chunks;
+
+    for my $front (@front_chunk_files) {
+        $front =~ m,^Front/(\S*)F\.MP4$,
+            or die "Unexpected filename format: $front";
+
+        my $base = $1;
+        my $back = "Back/${base}B.MP4";
+        my $output = "Output/${base}.MP4";
+
+        -f $front or die "File '$front' is missing";
+        -f $back or die "File '$back' is missing";
+        #-e $output and die "File '$output' already exists";
+
+        print "==>> $output\n";
+
+        my $cmd = make_ffmpeg_cmd $front, $back, $output;
+        print "$cmd\n";
+        #`$cmd`;
+
+        push @out_chunks, "${base}.MP4";
+    }
+    return @out_chunks;
+}
+
+sub write_playlist {
+    my @outs = @_;
+
+    open my $fh, '>', $playlist_filename;
+    print $fh join "\n", map { "file '$_'" } @outs;
+}
+
+my @outs = overlay_back_on_front(sort glob('Front/*.MP4'));
+write_playlist @outs;
+
+my $ffmpeg_join_cmd = "ffmpeg -f concat -safe 0 -i $playlist_filename -c copy $out_dir/output.mp4";
+print "$ffmpeg_join_cmd\n";
+`$ffmpeg_join_cmd`;
+
