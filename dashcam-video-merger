@@ -1,5 +1,8 @@
 #!/usr/bin/env perl
 
+use Getopt::Tabular;
+use File::Spec::Functions qw(rel2abs);
+
 use autodie;
 use strict;
 use warnings;
@@ -17,7 +20,10 @@ my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec"
 my $out_dir = 'Output';
 my $playlist = "$out_dir/playlist.txt";
 
-my $ffmpeg_join_cmd = "ffmpeg -f concat -safe 0 -i $playlist -c copy $out_dir/output.mp4";
+sub ffmpeg_join_cmd {
+    my ($playlist, $out) = @_;
+    return "ffmpeg -f concat -safe 0 -i $playlist -c copy $out";
+}
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $o) = @_;
@@ -33,6 +39,8 @@ sub run_command {
 sub overlay_back_on_front {
     my @front_chunk_files = @_;
 
+    @front_chunk_files > 0 or die "No video chunks found!";
+
     unless (-d $out_dir) {
         mkdir $out_dir or die "Failed to create $out_dir";
     }
@@ -40,7 +48,7 @@ sub overlay_back_on_front {
     my @out_chunks;
 
     for my $front (@front_chunk_files) {
-        $front =~ m,^Front/(\S*)F\.MP4$,
+        $front =~ m,Front/(\S*)F\.MP4$,
             or die "Unexpected filename format: $front";
 
         my $base = $1;
@@ -64,8 +72,31 @@ sub write_playlist {
     print $fh join "\n", map { "file '$_'" } @outs;
 }
 
-my @outs = overlay_back_on_front(sort glob('Front/*.MP4'));
-write_playlist @outs;
+sub main {
+    my $input_dir = '.';
+    my $output_file = 'output.mp4';
 
-run_command($ffmpeg_join_cmd);
+    my @options = (
+        ['-i', 'string', 1, \$input_dir, "Path where Front/ and Back/ with video files are located" ],
+        ['-o', 'string', 1, \$output_file, "Name of output file" ],
+    );
+    Getopt::Tabular::SetOptionPatterns qw|(--)([\w-]+) (-)(\w+)|;
+    Getopt::Tabular::SetHelpOption("--help");
+    GetOptions(\@options, \@ARGV) or exit(1);
+
+    $output_file = rel2abs $output_file;
+    $input_dir = rel2abs $input_dir;
+
+    chdir $input_dir;
+
+    -d 'Front' && -d 'Back' or die
+       "'Front' and 'Back' directories not found at $input_dir\nYou probably need to set a different input path (or cd there).\n";
+
+    my @outs = overlay_back_on_front(sort glob 'Front/*.MP4');
+    write_playlist @outs;
+
+    run_command(ffmpeg_join_cmd($playlist, $output_file));
+}
+
+main();
 
