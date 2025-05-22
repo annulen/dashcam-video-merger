@@ -2,6 +2,7 @@
 
 use Getopt::Tabular;
 use File::Spec::Functions qw(rel2abs);
+use File::Temp;
 
 use autodie;
 use strict;
@@ -17,8 +18,6 @@ my $ffmpeg_filter_hd =
 my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
 
-my $out_dir = 'Output';
-my $playlist = "$out_dir/playlist.txt";
 
 sub ffmpeg_join_cmd {
     my ($playlist, $out) = @_;
@@ -37,23 +36,18 @@ sub run_command {
 }
 
 sub overlay_back_on_front {
-    my @front_chunk_files = @_;
+    my ($out_dir, @front_chunk_files) = @_;
 
     @front_chunk_files > 0 or die "No video chunks found!";
 
-    unless (-d $out_dir) {
-        mkdir $out_dir or die "Failed to create $out_dir";
-    }
-
     my @out_chunks;
-
     for my $front (@front_chunk_files) {
         $front =~ m,Front/(\S*)F\.MP4$,
             or die "Unexpected filename format: $front";
 
         my $base = $1;
         my $back = "Back/${base}B.MP4";
-        my $output = "Output/${base}.MP4";
+        my $output = "$out_dir/${base}.MP4";
 
         -f $front or die "File '$front' is missing";
         -f $back or die "File '$back' is missing";
@@ -66,7 +60,7 @@ sub overlay_back_on_front {
 }
 
 sub write_playlist {
-    my @outs = @_;
+    my ($playlist, @outs) = @_;
 
     open my $fh, '>', $playlist;
     print $fh join "\n", map { "file '$_'" } @outs;
@@ -87,13 +81,17 @@ sub main {
     $output_file = rel2abs $output_file;
     $input_dir = rel2abs $input_dir;
 
+    my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
+    print "Will use directory $tmp_dir to store temporary files...\n";
+    my $playlist = "$tmp_dir/playlist.txt";
+
     chdir $input_dir;
 
     -d 'Front' && -d 'Back' or die
        "'Front' and 'Back' directories not found at $input_dir\nYou probably need to set a different input path (or cd there).\n";
 
-    my @outs = overlay_back_on_front(sort glob 'Front/*.MP4');
-    write_playlist @outs;
+    my @outs = overlay_back_on_front($tmp_dir, sort glob 'Front/*.MP4');
+    write_playlist $playlist, @outs;
 
     run_command(ffmpeg_join_cmd($playlist, $output_file));
 }
