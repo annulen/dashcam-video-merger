@@ -21,6 +21,8 @@ my $ffmpeg_filter_sd =
     . '[pip]eq=brightness=0.15[pip];'
     . '[0:v:1][pip]overlay=W-w:0';
 
+my $ffmpeg_filter;
+
 my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
 
@@ -32,7 +34,7 @@ sub ffmpeg_join_cmd {
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $o) = @_;
-    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_sd" $o};
+    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter" $o};
 }
 
 sub run_command {
@@ -75,10 +77,12 @@ sub write_playlist {
 sub main {
     my $input_dir = '.';
     my $output_file = 'output.mp4';
+    my $hd;
 
     my @options = (
         ['-i', 'string', 1, \$input_dir, "Path where Front/ and Back/ with video files are located" ],
         ['-o', 'string', 1, \$output_file, "Name of output file" ],
+        ['--hd', 'const', 1, \$hd, "Produce video from high-resolution streams" ],
     );
     Getopt::Tabular::SetOptionPatterns qw|(--)([\w-]+) (-)(\w+)|;
     Getopt::Tabular::SetHelpOption("--help");
@@ -86,6 +90,9 @@ sub main {
 
     $output_file = rel2abs $output_file;
     $input_dir = rel2abs $input_dir;
+
+    $ffmpeg_filter = $hd ? $ffmpeg_filter_hd
+                         : $ffmpeg_filter_sd;
 
     my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
     print "Will use directory $tmp_dir to store temporary files...\n";
