@@ -15,6 +15,12 @@ my $ffmpeg_filter_hd =
     . '[pip]eq=brightness=0.15[pip];'
     . '[main][pip]overlay=W-w:0';
 
+my $ffmpeg_filter_sd =
+      '[1:v:1]crop=x=250:y=210:w=500:h=270[pip];'
+    . '[pip]scale=w=iw/2:h=ih/2[pip];'
+    . '[pip]eq=brightness=0.15[pip];'
+    . '[0:v:1][pip]overlay=W-w:0';
+
 my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
 
@@ -26,7 +32,7 @@ sub ffmpeg_join_cmd {
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $o) = @_;
-    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_hd" $o};
+    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter_sd" $o};
 }
 
 sub run_command {
