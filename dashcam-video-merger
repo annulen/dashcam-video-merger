@@ -22,6 +22,8 @@ my $ffmpeg_filter_sd =
     . '[0:v:1][pip]overlay=W-w:0';
 
 my $ffmpeg_filter;
+#my $ffmpeg_threads = '-filter_complex_threads 4';
+my $ffmpeg_threads = '-threads 4';
 
 my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
@@ -34,7 +36,7 @@ sub ffmpeg_join_cmd {
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $o) = @_;
-    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings -filter_complex "$ffmpeg_filter" $o};
+    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings $ffmpeg_threads -filter_complex "$ffmpeg_filter" $o};
 }
 
 sub run_command {
