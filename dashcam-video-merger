@@ -32,7 +32,7 @@ my $ffmpeg_filter_hd =
     . '[main][pip]overlay=W-w:0';
 
 my $ffmpeg_filter_sd =
-      '[1:v:1]crop=x=250:y=210:w=500:h=270[pip];'
+      '[1:v:1]crop=x=250:y=150:w=500:h=330[pip];'
     . '[pip]scale=w=iw/2:h=ih/2[pip];'
     . '[pip]eq=brightness=0.15[pip];'
     . '[0:v:1][pip]overlay=W-w:0';
@@ -42,7 +42,8 @@ my $ffmpeg_args = '-loglevel warning -preset slow -sws_flags lanczos';
 
 my $ffmpeg_filter;
 #my $ffmpeg_threads = '-filter_complex_threads 4';
-my $ffmpeg_threads = '-threads 4';
+#my $ffmpeg_threads = '-threads 4';
+my $ffmpeg_threads = '';
 
 my $codec = '';
 my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
