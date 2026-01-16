@@ -40,14 +40,6 @@ my $ffmpeg_filter_sd =
 my $ffmpeg_codec = '';
 my $ffmpeg_args = '-loglevel warning -preset slow -sws_flags lanczos';
 
-my $ffmpeg_filter;
-#my $ffmpeg_threads = '-filter_complex_threads 4';
-#my $ffmpeg_threads = '-threads 4';
-my $ffmpeg_threads = '';
-
-my $codec = '';
-my $ffmpeg_settings = "-loglevel warning -preset slow -sws_flags lanczos $codec";
-
 exit main();
 
 
@@ -57,8 +49,13 @@ sub ffmpeg_join_cmd {
 }
 
 sub ffmpeg_pip_cmd {
-    my ($i1, $i2, $o) = @_;
-    return qq{ffmpeg -i $i1 -i $i2 $ffmpeg_settings $ffmpeg_threads -filter_complex "$ffmpeg_filter" $o};
+    my ($i1, $i2, $ffcfg, $out) = @_;
+    return sprintf 'ffmpeg -i "%s" -i "%s" %s -filter_complex "%s" %s "%s"',
+        $i1, $i2,
+        $ffcfg->codec,
+        $ffcfg->filter_complex,
+        $ffcfg->args,
+        $out;
 }
 
 sub run_command {
@@ -68,7 +65,7 @@ sub run_command {
 }
 
 sub overlay_back_on_front {
-    my ($out_dir, @front_chunk_files) = @_;
+    my ($out_dir, $ffcfg, @front_chunk_files) = @_;
 
     @front_chunk_files > 0 or die "No video chunks found!";
 
@@ -85,7 +82,7 @@ sub overlay_back_on_front {
         -f $back or die "File '$back' is missing";
         -e $output and die "File '$output' already exists";
 
-        run_command(ffmpeg_pip_cmd $front, $back, $output);
+        run_command(ffmpeg_pip_cmd $front, $back, $ffcfg, $output);
         push @out_chunks, "${base}.MP4";
     }
     return @out_chunks;
@@ -133,9 +130,7 @@ sub main {
        "'Front' and 'Back' directories not found at @{[ $config->input_dir ]}\n"
        . "You probably need to set a different input path (or cd there).\n";
 
-    $ffmpeg_filter = $config->ffmpeg->filter_complex;
-
-    my @outs = overlay_back_on_front($config->tmp_dir, sort glob 'Front/*.MP4');
+    my @outs = overlay_back_on_front($config->tmp_dir, $config->ffmpeg, sort glob 'Front/*.MP4');
     write_playlist $config->playlist, @outs;
 
     run_command(ffmpeg_join_cmd($config->playlist, $config->output_file));
