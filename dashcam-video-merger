@@ -38,6 +38,8 @@ my $ffmpeg_filter_sd =
     . '[0:v:1][pip]overlay=W-w:0';
 
 my $ffmpeg_codec = '';
+# H265
+#$ffmpeg_codec = '-c:v libx265 -x265-params log-level=warning';
 my $ffmpeg_args = '-loglevel warning -preset slow -sws_flags lanczos';
 
 exit main();
