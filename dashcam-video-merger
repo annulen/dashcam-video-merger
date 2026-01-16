@@ -21,6 +21,7 @@ struct Config => [
 struct FfmpegConfig => [
     filter_complex => '$',
     codec => '$',
+    threads => '$',
     args => '$',
 ];
 
@@ -52,9 +53,10 @@ sub ffmpeg_join_cmd {
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $ffcfg, $out) = @_;
-    return sprintf 'ffmpeg -i "%s" -i "%s" %s -filter_complex "%s" %s "%s"',
+    return sprintf 'ffmpeg -i "%s" -i "%s" %s -threads %d -filter_complex "%s" %s "%s"',
         $i1, $i2,
         $ffcfg->codec,
+        $ffcfg->threads,
         $ffcfg->filter_complex,
         $ffcfg->args,
         $out;
@@ -101,11 +103,13 @@ sub main {
     my $input_dir = '.';
     my $output_file = 'output.mp4';
     my $hd;
+    my $threads = 0;
 
     my @options = (
         ['-i', 'string', 1, \$input_dir, "Path where Front/ and Back/ with video files are located" ],
         ['-o', 'string', 1, \$output_file, "Name of output file" ],
         ['--hd', 'const', 1, \$hd, "Produce video from high-resolution streams" ],
+        ['--threads', 'integer', 1, \$threads, "Number of ffmpeg threads used for encoding (0 means let ffmpeg decide)" ],
     );
     Getopt::Tabular::SetOptionPatterns qw|(--)([\w-]+) (-)(\w+)|;
     Getopt::Tabular::SetHelpOption("--help");
@@ -122,6 +126,7 @@ sub main {
             filter_complex => $hd ? $ffmpeg_filter_hd : $ffmpeg_filter_sd,
             codec => $ffmpeg_codec,
             args => $ffmpeg_args,
+            threads => $threads,
         ),
     );
     $config->playlist(catdir($config->tmp_dir, "playlist.txt"));
