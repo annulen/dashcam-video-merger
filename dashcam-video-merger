@@ -5,6 +5,10 @@ use Getopt::Tabular;
 use File::Spec::Functions qw(catdir rel2abs);
 use File::Temp;
 
+use FindBin;
+use lib "$FindBin::Bin/lib";
+use Config::Sectioned;
+
 use autodie;
 use strict;
 use warnings;
@@ -25,23 +29,9 @@ struct FfmpegConfig => [
     args => '$',
 ];
 
-my $ffmpeg_filter_hd =
-      '[0:v]scale=1280:1024[main];'
-    . '[1:v]crop=x=566:y=430:w=1132:h=650[pip];'
-    . '[pip]scale=w=iw/2.1:h=ih/2.1[pip];'
-    . '[pip]eq=brightness=0.15[pip];'
-    . '[main][pip]overlay=W-w:0';
-
-my $ffmpeg_filter_sd =
-      '[1:v:1]crop=x=250:y=150:w=500:h=330[pip];'
-    . '[pip]scale=w=iw/2:h=ih/2[pip];'
-    . '[pip]eq=brightness=0.15[pip];'
-    . '[0:v:1][pip]overlay=W-w:0';
-
 my $ffmpeg_codec = '';
 # H265
 #$ffmpeg_codec = '-c:v libx265 -x265-params log-level=warning';
-my $ffmpeg_args = '-loglevel warning -preset slow -sws_flags lanczos';
 
 exit main();
 
@@ -115,6 +105,9 @@ sub main {
     Getopt::Tabular::SetHelpOption("--help");
     GetOptions(\@options, \@ARGV) or exit(1);
 
+    my $profileName = $hd ? 'hd' : 'sd';
+    my $profile = Config::Sectioned::read_file("$FindBin::Bin/$profileName.profile");
+
     my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
     print "Will use directory $tmp_dir to store temporary files...\n";
 
@@ -123,9 +116,9 @@ sub main {
         output_file => (rel2abs $output_file),
         tmp_dir => $tmp_dir->dirname,
         ffmpeg => FfmpegConfig->new(
-            filter_complex => $hd ? $ffmpeg_filter_hd : $ffmpeg_filter_sd,
+            filter_complex => $profile->{filter_complex},
             codec => $ffmpeg_codec,
-            args => $ffmpeg_args,
+            args => $profile->{ffmpeg_args},
             threads => $threads,
         ),
     );
