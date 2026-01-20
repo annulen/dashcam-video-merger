@@ -107,6 +107,7 @@ sub main {
     GetOptions(\@options, \@ARGV) or exit(1);
 
     my $profile = Config::Sectioned::read_file("$FindBin::Bin/$profileName.profile");
+    $profile->{filter_complex} =~ s/;$//;
 
     my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
     print "Will use directory $tmp_dir to store temporary files...\n";
