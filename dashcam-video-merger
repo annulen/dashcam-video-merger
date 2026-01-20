@@ -93,20 +93,19 @@ sub write_playlist {
 sub main {
     my $input_dir = '.';
     my $output_file = 'output.mp4';
-    my $hd;
+    my $profileName = 'default';
     my $threads = 0;
 
     my @options = (
         ['-i', 'string', 1, \$input_dir, "Path where Front/ and Back/ with video files are located" ],
         ['-o', 'string', 1, \$output_file, "Name of output file" ],
-        ['--hd', 'const', 1, \$hd, "Produce video from high-resolution streams" ],
+        ['--profile', 'string', 1, \$profileName, "Name of profile to use for encoding" ],
         ['--threads', 'integer', 1, \$threads, "Number of ffmpeg threads used for encoding (0 means let ffmpeg decide)" ],
     );
     Getopt::Tabular::SetOptionPatterns qw|(--)([\w-]+) (-)(\w+)|;
     Getopt::Tabular::SetHelpOption("--help");
     GetOptions(\@options, \@ARGV) or exit(1);
 
-    my $profileName = $hd ? 'hd' : 'sd';
     my $profile = Config::Sectioned::read_file("$FindBin::Bin/$profileName.profile");
 
     my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
