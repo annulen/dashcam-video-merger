@@ -24,14 +24,9 @@ struct Config => [
 
 struct FfmpegConfig => [
     filter_complex => '$',
-    codec => '$',
     threads => '$',
     args => '$',
 ];
-
-my $ffmpeg_codec = '';
-# H265
-#$ffmpeg_codec = '-c:v libx265 -x265-params log-level=warning';
 
 exit main();
 
@@ -43,10 +38,10 @@ sub ffmpeg_join_cmd {
 
 sub ffmpeg_pip_cmd {
     my ($i1, $i2, $ffcfg, $out) = @_;
-    return sprintf 'ffmpeg -i "%s" -i "%s" %s -threads %d -filter_complex "%s" %s "%s"',
+    return sprintf 'ffmpeg -i "%s" -i "%s" %s -filter_complex "%s" %s "%s"',
         $i1, $i2,
-        $ffcfg->codec,
-        $ffcfg->threads,
+        defined $ffcfg->threads ? '-threads ' . $ffcfg->threads
+                                : '',
         $ffcfg->filter_complex,
         $ffcfg->args,
         $out;
@@ -112,13 +107,14 @@ sub main {
     my $input_dir = '.';
     my $output_file = 'output.mp4';
     my $profileName = 'default';
-    my $threads = 0;
+    my $threads;
 
     my @options = (
         ['-i', 'string', 1, \$input_dir, "Path where Front/ and Back/ with video files are located" ],
         ['-o', 'string', 1, \$output_file, "Name of output file" ],
         ['--profile', 'string', 1, \$profileName, "Name of profile to use for encoding" ],
-        ['--threads', 'integer', 1, \$threads, "Number of ffmpeg threads used for encoding (0 means let ffmpeg decide)" ],
+        ['--threads', 'integer', 1, \$threads,
+            "Number of ffmpeg threads used for encoding (default lets ffmpeg decide)" ],
     );
     Getopt::Tabular::SetOptionPatterns qw|(--)([\w-]+) (-)(\w+)|;
     Getopt::Tabular::SetHelpOption("--help");
@@ -135,7 +131,6 @@ sub main {
         tmp_dir => $tmp_dir->dirname,
         ffmpeg => FfmpegConfig->new(
             filter_complex => $profile->{filter_complex},
-            codec => $ffmpeg_codec,
             args => $profile->{ffmpeg_args},
             threads => $threads,
         ),
