@@ -64,7 +64,7 @@ sub overlay_back_on_front {
     @front_chunk_files > 0 or die "No video chunks found!";
 
     my @out_chunks;
-    for my $front (@front_chunk_files) {
+    while (my ($index, $front) = each @front_chunk_files) {
         $front =~ m,Front/(\S*)F\.MP4$,
             or die "Unexpected filename format: $front";
 
@@ -76,6 +76,7 @@ sub overlay_back_on_front {
         -f $back or die "File '$back' is missing";
         -e $output and die "File '$output' already exists";
 
+        printf "Chunk %d/%d:\n", map { $_ + 1 } $index, $#front_chunk_files;
         run_command(ffmpeg_pip_cmd $front, $back, $ffcfg, $output);
         push @out_chunks, "${base}.MP4";
     }
