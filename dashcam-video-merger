@@ -106,7 +106,9 @@ sub main {
     Getopt::Tabular::SetHelpOption("--help");
     GetOptions(\@options, \@ARGV) or exit(1);
 
-    my $profile = Config::Sectioned::read_file("$FindBin::Bin/$profileName.profile");
+    $profileName = "$FindBin::Bin/$profileName.profile";
+    -f $profileName or die "Profile config '$profileName' not found!";
+    my $profile = Config::Sectioned::read_file($profileName);
     $profile->{filter_complex} =~ s/;$//;
 
     my $tmp_dir = File::Temp->newdir("dvmXXXXXX", TMPDIR => 1);
